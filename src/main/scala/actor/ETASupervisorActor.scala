@@ -1,23 +1,29 @@
 package actor
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import bizmodel.RouteIdForDetail
+import akka.routing.FromConfig
+import bizmodel.{EtaCalc, RouteIdForDetail}
 import presentation.RequestTimeout
 
+object ETASupervisorActor {
 
-/**
-  * Created by Akshay on 4/22/2017.
-  */
+  val name = "etasupervisor"
 
+}
 
 /**
   * Forwards the messages to the specific business actors
+  *
   */
-class ETASupervisorActor
+class ETASupervisorActor()
   extends Actor with RequestTimeout with ActorLogging {
 
-  //Creating routeDetailsActor actor
+
+
+  //Creating hashsearchbiz actor
   lazy val routeDetailsActor: ActorRef = context.actorOf(Props[RouteDetailsActor])
+
+  lazy val etaApiActor: ActorRef = context.actorOf(Props[ETAApiActor])
 
 
   /**
@@ -29,5 +35,9 @@ class ETASupervisorActor
     case routeIdForDetail: RouteIdForDetail =>
       log.info("RouteID received")
       routeDetailsActor.forward(routeIdForDetail)
+
+    case etaCalc: EtaCalc =>
+      log.info("URI received")
+      etaApiActor.forward(etaCalc)
   }
 }

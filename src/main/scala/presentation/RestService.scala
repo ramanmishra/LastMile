@@ -7,7 +7,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
-import bizmodel.{ExceptionMessage, RouteDetails, RouteIdForDetail}
+import bizmodel._
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -34,12 +34,48 @@ trait RestRoutes extends Api with Marshalling with ETAMessages {
     * Defines the routing tree for dadr
     * @return  Routing Tree of dadr
     */
-  def routes: Route = routeDetails
+  def routes: Route = routeDetails ~ AddRoute ~ subtractRoute
 
   /**
     * Defines the route or handler for displaying dadrs in the wall of a user
     * @return  Route for displaying dadrs in the wall of a user
     */
+
+  def subtractRoute=pathPrefix("delete") {
+    pathEndOrSingleSlash {
+      post {
+        entity(as[DeleteRoute]) { (delSeq:DeleteRoute) =>
+          onComplete(calculateETADel(delSeq.newSequence)) {
+            case Success(successResponse) =>
+              successResponse match {
+                case SuccessResponse => complete(OK)
+                case ErrorResponse => complete(OK)
+              }
+            case Failure(_) => complete(ServiceUnavailable, serviceUnavailable)
+          }
+        }
+      }
+    }
+  }
+
+
+  def AddRoute=pathPrefix("add") {
+    pathEndOrSingleSlash {
+      post {
+        entity(as[AddRoute]) { (newSeq: AddRoute) =>
+          onComplete(calculateETA(newSeq.newSequence)) {
+            case Success(successResponse) =>
+              successResponse match {
+                case SuccessResponse => complete(OK)
+                case ErrorResponse => complete(OK)
+              }
+            case Failure(_) => complete(ServiceUnavailable, serviceUnavailable)
+          }
+        }
+      }
+    }
+  }
+
   def routeDetails: Route =
     pathPrefix("route"/Segment) { routeid =>
       pathEndOrSingleSlash {
@@ -80,6 +116,12 @@ trait Api extends RequestTimeout {
     */
   def getRouteDetails(userId: String): Future[List[RouteDetails]] = {
     ETASupervisorActor.ask(RouteIdForDetail(userId)).mapTo[List[RouteDetails]]
+  }
+  def calculateETA(newSeq:List[String])={
+    ETASupervisorActor.ask(AddRoute(newSeq))
+  }
+  def calculateETADel(newSeq:List[String])={
+    ETASupervisorActor.ask(DeleteRoute(newSeq))
   }
 
 }

@@ -24,18 +24,15 @@ class ETAApiActor() extends Actor with RequestTimeout with ActorLogging {
   def receive: PartialFunction[Any, Unit] = {
 
     case EtaCalc(uri) =>
-      log.info("RouteId message received by the RouteDetailsActor")
-
-      println(uri)
+      log.info("URI message received by the ETAApiActor")
       val html = JSON.parseFull(Source.fromURL(uri).mkString)
-
       println(html)
-      val a: List[List[Double]] = html match {
+      val a = html match {
         // Matches if jsonStr is valid JSON and represents a Map of Strings to Any
-        case Some(map: Map[String, List[Map[String, List[Map[String, Map[String, Double]]]]]]) =>
+        case Some(map: Map[String, List[Map[String, List[Map[String, Map[String, Any]]]]]]) =>
           map("rows").map(row => {
             row("elements").map(elem => {
-              elem("distance")("value")
+              elem("duration")("value").toString
             })
           })
       }

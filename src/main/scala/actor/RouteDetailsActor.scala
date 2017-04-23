@@ -38,7 +38,6 @@ class RouteDetailsActor
       val collection = mongoClient.getDB("test").collectionNames()
       val data = JSON.parseFull(mongoClient.getDB("test").getCollection("route").find(new BasicDBObject("_id", "NSNLAXB12TH042017")).toArray().toString)
 
-      println(data)
       val a: List[Map[String, String]] = data match {
         // Matches if jsonStr is valid JSON and represents a Map of Strings to Any
         case Some(list: List[Map[String, List[Map[String, String]]]]) =>
@@ -51,26 +50,31 @@ class RouteDetailsActor
         xyz("driverName").toString, xyz("pickupStreetAddress").toString, xyz("pickupState").toString,
         xyz("destCity").toString))
 
+      println(res.map(a=>a.stopType))
       //val dataRes = res.filter(ele => ele.stopType.eq("P")).head :: res.filter(ele => ele.stopType.eq("D"))
-      val dataRes: List[RouteDetails] = if (res.filter(ele => ele.stopType.eq("P")).size > 0) {
-        res.filter(ele => ele.stopType.eq("P")).head :: res.filter(ele => ele.stopType.eq("D"))
+      val dataRes: List[ModifiedRouteDetails] = if (res.filter(_.stopType.equals("P")).size > 0) {
+        res.filter(_.stopType.equals("P")).map(ele => ModifiedRouteDetails(ele.pickupStreetAddress+" "+ele.pickupCity+ " "+ ele.pickupState)).head :: res.filter(_.stopType.equals("D")).map(ele => ModifiedRouteDetails(ele.deliveryStreetAddress+" "+ele.destCity+ " "+ ele.destState))
       }else {
-        res.filter(ele => ele.stopType.eq("D"))
+        println(res.filter(ele => ele.stopType.eq("P")))
+        res.filter(_.stopType.equals("D")).map(ele => ModifiedRouteDetails(ele.deliveryStreetAddress+" "+ele.destCity+ " "+ ele.destState))
       }
 
-      val dividedList: List[List[RouteDetails]] = dataRes.grouped(8).toList
-
+      val dividedList: List[List[ModifiedRouteDetails]] = dataRes.grouped(8).toList
+println(dividedList)
       val count = dividedList.count(_ => true)
+      val matrix: List[List[(ModifiedRouteDetails, ModifiedRouteDetails)]] =
+        dividedList.flatMap(a => dividedList.map(b => {
+        a zip b
+      }))
 
-      val matrix: Future[List[List[List[Double]]]] = Future.sequence(dividedList.flatMap(a => dividedList.map(b => {
+      val apicall = matrix.map(a => a.map(b =>
         etaSupervisorActor.ask(EtaCalc("https://maps.googleapis.com/maps/api/distancematrix/json?origins="
-          + a.mkString("|").replaceAll(" ", "+")
+          + b._1.address.mkString("|").replaceAll(" ", "+")
           + "&destinations="
-          + b.mkString("|").replaceAll(" ", "+")
-          + "&mode=car&language=en-EN&key=AIzaSyCSI6Ee30NrSFKj62IDzcZuf71UskQCEDM")).mapTo[List[List[Double]]]
-      })))
+          + b._2.address.mkString("|").replaceAll(" ", "+")
+          + "&mode=car&language=en-EN&key=AIzaSyBcn_eStJLn7qMv7YOW9WcdWHwMRRQpW8g")).mapTo[List[List[Double]]]))
 
-      matrix.map(e => println(e))
+      apicall.map(e => println(e))
 
 
     case AddRoute(newSequence)=>

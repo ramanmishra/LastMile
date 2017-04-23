@@ -5,16 +5,6 @@ import akka.routing.FromConfig
 import bizmodel.{EtaCalc, RouteIdForDetail}
 import presentation.RequestTimeout
 
-object ETASupervisorActor {
-
-  val name = "etasupervisor"
-
-}
-
-/**
-  * Forwards the messages to the specific business actors
-  *
-  */
 class ETASupervisorActor()
   extends Actor with RequestTimeout with ActorLogging {
 
